@@ -27,8 +27,14 @@ class PretrainingDataset(Dataset):
     def __len__(self) -> int:
         return len(self.input_ids)
 
-    def __getitem__(self, i: int) -> tuple[Tensor, Tensor]:
+    def __getitem__(self, i: int):
         return self.input_ids[i], self.target_ids[i]
+
+
+def load_pretraining_dataset(path: str) -> str:
+    with open(path, "r", encoding="utf-8") as file:
+        raw_text = file.read()
+    return raw_text
 
 
 def build_pretraining_dataloader(
