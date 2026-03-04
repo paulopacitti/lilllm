@@ -1,7 +1,7 @@
 import torch
 from torch import Tensor
 from torch.utils.data import Dataset, DataLoader
-from lilllm.tokenizer import Tokenizer
+from tokenizer import Tokenizer
 
 
 class PretrainingDataset(Dataset):

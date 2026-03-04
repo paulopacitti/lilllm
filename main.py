@@ -1,6 +1,6 @@
 from os import path
-from lilllm import data
-from lilllm.model import LilLLM
+from lilllm.gpt import data
+from lilllm.gpt.model import GPT
 import torch
 
 DATASET = path.join(path.dirname(__file__), "./data/the-verdict.txt")
@@ -36,7 +36,7 @@ def main():
     print(f"[input_embeddings] input_embeddings.shape: {input_embeddings.shape}")
 
     # model embeddings
-    model = LilLLM(max_length)
+    model = GPT(max_length)
     output = model(inputs)
     print(f"[output]: output:\n{output}")
 
