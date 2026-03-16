@@ -23,11 +23,15 @@ class SelfAttention(nn.Module):
 
 
 class GPT(nn.Module):
+    context_length: int
+    token_embedding_layer: nn.Embedding
+    positional_embedding_layer: nn.Embedding
+
     def __init__(self, context_length: int):
         super().__init__()
         output_dim = 256
         vocab_size = 50257
-        self.context_length = context_length
+        self.context_length = context_length  # type: ignore[assignment]
         self.token_embedding_layer = nn.Embedding(vocab_size, output_dim)
         self.positional_embedding_layer = nn.Embedding(context_length, output_dim)
 

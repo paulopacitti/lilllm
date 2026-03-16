@@ -1,9 +1,9 @@
 from os import path
-from lilllm.gpt import data
-from lilllm.gpt.model import GPT
+from llm.gpt import data
+from llm.gpt.model import GPT
 import torch
 
-DATASET = path.join(path.dirname(__file__), "./data/the-verdict.txt")
+DATASET = path.join(path.dirname(__file__), "../data/the-verdict.txt")
 
 
 def main():

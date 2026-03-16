@@ -1,10 +1,10 @@
 import torch
 from torch import Tensor
 from torch.utils.data import Dataset, DataLoader
-from tokenizer import Tokenizer
+from .tokenizer import Tokenizer
 
 
-class PretrainingDataset(Dataset):
+class PretrainingDataset(Dataset[tuple[Tensor, Tensor]]):
     def __init__(
         self,
         text: str,
@@ -13,8 +13,8 @@ class PretrainingDataset(Dataset):
         stride: int,
     ):
         self.tokenizer = tokenizer
-        self.input_ids = []
-        self.target_ids = []
+        self.input_ids: list[Tensor] = []
+        self.target_ids: list[Tensor] = []
 
         token_ids = tokenizer.encode(text)
 
@@ -27,8 +27,8 @@ class PretrainingDataset(Dataset):
     def __len__(self) -> int:
         return len(self.input_ids)
 
-    def __getitem__(self, i: int):
-        return self.input_ids[i], self.target_ids[i]
+    def __getitem__(self, index: int) -> tuple[Tensor, Tensor]:
+        return self.input_ids[index], self.target_ids[index]
 
 
 def load_pretraining_dataset(path: str) -> str:
