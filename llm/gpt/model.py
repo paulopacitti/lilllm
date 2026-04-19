@@ -96,23 +96,89 @@ class MultiHeadAttention(nn.Module):
         return z
 
 
+class FeedForward(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        self.layers = nn.Sequential(
+            nn.Linear(cfg["emb_dim"], 4 * cfg["emb_dim"]),
+            nn.GELU(),
+            nn.Linear(4 * cfg["emb_dim"], cfg["emb_dim"]),
+        )
+
+    def forward(self, x):
+        return self.layers(x)
+
+
+class LayerNorm(nn.Module):
+    def __init__(self, emb_dim):
+        super().__init__()
+        self.eps = 1e-5
+        self.scale = nn.Parameter(torch.ones(emb_dim))
+        self.shift = nn.Parameter(torch.zeros(emb_dim))
+
+    def forward(self, x):
+        mean = x.mean(dim=-1, keepdim=True)
+        var = x.var(dim=-1, keepdim=True, unbiased=False)
+        norm = (x - mean) / torch.sqrt(var + self.eps)
+        return self.scale * norm + self.shift
+
+
+class TransformerBlock(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        self.attn = MultiHeadAttention(
+            d_in=cfg["emb_dim"],
+            d_out=cfg["emb_dim"],
+            context_length=cfg["context_length"],
+            num_heads=cfg["n_heads"],
+            dropout=cfg["drop_rate"],
+            qkv_bias=cfg["qkv_bias"],
+        )
+        self.ffn = FeedForward(cfg)
+        self.norm1 = LayerNorm(cfg["emb_dim"])
+        self.norm2 = LayerNorm(cfg["emb_dim"])
+        self.dropout = nn.Dropout(cfg["drop_rate"])
+
+    def forward(self, x):
+        shortcut = x
+        x = self.norm1(x)
+        x = self.attn(x)
+        x = self.dropout(x)
+        x = x + shortcut
+
+        shortcut = x
+        x = self.norm2(x)
+        x = self.ffn(x)
+        x = self.dropout(x)
+        x = x + shortcut
+
+        return x
+
+
 class GPT(nn.Module):
     context_length: int
     token_embedding_layer: nn.Embedding
     positional_embedding_layer: nn.Embedding
 
-    def __init__(self, context_length: int):
+    def __init__(self, cfg):
         super().__init__()
-        output_dim = 256
-        vocab_size = 50257
-        self.context_length = context_length  # type: ignore[assignment]
-        self.token_embedding_layer = nn.Embedding(vocab_size, output_dim)
-        self.positional_embedding_layer = nn.Embedding(context_length, output_dim)
+        self.tok_emb = nn.Embedding(cfg["vocab_size"], cfg["emb_dim"])
+        self.pos_emb = nn.Embedding(cfg["context_length"], cfg["emb_dim"])
+        self.drop_emb = nn.Dropout(cfg["drop_rate"])
+        self.transformer_blocks = nn.Sequential(
+            *[TransformerBlock(cfg) for _ in range(cfg("n_layers"))]
+        )
+        self.final_norm = LayerNorm(cfg["emb_dim"])
+        self.out_head = nn.Linear(cfg["emb_dim"], cfg["vocab_size"], bias=False)
 
     def forward(self, x):
-        tok_embeddings = self.token_embedding_layer(x)
-        pos_embeddings = self.positional_embedding_layer(
-            torch.arange(self.context_length)
-        )
-        x = tok_embeddings + pos_embeddings
-        return x
+        batch_size, seq_len = x.shape
+        tok_embeds = self.tok_emb(x)
+        pos_embeds = self.pos_emb(torch.arange(seq_len, device=x.device))
+
+        x = tok_embeds + pos_embeds
+        x = self.drop_emb(x)
+        x = self.transformer_blocks(x)
+        x = self.final_norm(x)
+        logits = self.out_head(x)
+        return logits
